@@ -1,0 +1,29 @@
+---
+title: "Capstone Report"
+author: "Fábio Franco Costa"
+date: "November 4, 2015"
+output: html_document
+---
+
+# Title
+- A brief description of what you've done
+
+# Introduction
+- A description of the question/problem and the rationale for studying it
+
+# Methods and Data
+- Describe how you used the data and the type of analytic methods that you used; it's okay to be a bit technical here but clarity is important
+
+# Results
+- Describe what you found through your analysis of the data.
+
+# Discussion
+- Explain how you interpret the results of your analysis and what the implications are for your question/problem.
+
+You can also embed plots, for example:
+
+```{r, echo=FALSE}
+plot(cars)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
