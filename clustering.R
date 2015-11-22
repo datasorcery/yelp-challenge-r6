@@ -10,12 +10,14 @@ library(lubridate)
 # load(file="./rdata/tip.RData")
 load(file="./rdata/review.RData")
 load(file="./rdata/user.RData")
+#save(df_users, file = './rdata/df_users.RData')
 
 # SETUP
 set.seed(666)
 s_number <- 50000 # number of random samples
 clusters_no <- 15
 rescale <- FALSE
+alpha <- 0.05
 
 # Do users analysis
 system.time({
@@ -132,7 +134,20 @@ resumo <- resumo[duplicated(resumo$business_id), ]
 # Calculate standard error
 resumo$SR <- resumo$stars[,2] / resumo$stars[,3]
 
+# Calculate T score for two sided test
+system.time({
+    resumo$TS <- sapply(resumo$stars[,3], 
+                              FUN = function(x) qt(1-alpha/2,df = x))
+})
 
+# Test if diferent groups lead to diferent averages
+g <- c('zTCCbg7mGslxACL5KlAPIQ')
+g <- unique(resumo$business_id)
+hyp_tests <- 0
+
+for (b in g) {
+    print(resumo[resumo$business_id == 'zTCCbg7mGslxACL5KlAPIQ',])
+}
 
 # cleanup USERS
 rm(df_users,nested_cols,s_number,y_months,cl_users,mtx_user,size,

@@ -2,28 +2,33 @@
 title: "Capstone Report"
 author: "Fábio Franco Costa"
 date: "November 4, 2015"
-output: html_document
+output: pdf_document
 ---
+```{r,echo=FALSE}
+load(file = './rdata/df_users.RData')
+```
 
 # Title
-- A brief description of what you've done
+Do similar users rates places equally?
 
 # Introduction
-- A description of the question/problem and the rationale for studying it
+When you are using apps like YELP, you get ratings based on the average reviews from all users. In that situation I may get good ratings for a place that I would not really appreciate, because not every user are similar to others. My problem is testing if clusters of similar users rate places equally, so that I can use the average rate of this clusters to predict how I would rate some new place.
 
 # Methods and Data
-- Describe how you used the data and the type of analytic methods that you used; it's okay to be a bit technical here but clarity is important
+For our analysis, the first step was to decide a clustering strategy. We decided to use the features in the user database as our characteristics. We did some transformations and end up with the following structure:
+
+```{r, echo=FALSE}
+str(df_users)
+```
+We clustered the data using K means, for 15 clusters using the following command:
+```{r, eval=FALSE}
+cl_users <- kmeans(mtx_user, clusters_no,
+                   iter.max = 1000, nstart = 5)
+```
+After that, we used Hypothesis Test to check if different groups have different average rates for the same business. We used a 90% confidence interval to our analysis because we didn't want to impose a very strict test.
 
 # Results
-- Describe what you found through your analysis of the data.
+We found that the
 
 # Discussion
 - Explain how you interpret the results of your analysis and what the implications are for your question/problem.
-
-You can also embed plots, for example:
-
-```{r, echo=FALSE}
-plot(cars)
-```
-
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
