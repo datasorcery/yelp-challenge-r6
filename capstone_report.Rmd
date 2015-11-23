@@ -5,7 +5,7 @@ date: "November 4, 2015"
 output: pdf_document
 ---
 ```{r,echo=FALSE}
-load(file = './rdata/df_users.RData')
+load(file = './rdata/analysis.RData')
 ```
 
 # Title
@@ -28,7 +28,40 @@ cl_users <- kmeans(mtx_user, clusters_no,
 After that, we used Hypothesis Test to check if different groups have different average rates for the same business. We used a 90% confidence interval to our analysis because we didn't want to impose a very strict test.
 
 # Results
-We found that the
+We found that the groups are not very well distributed if you do not scale the variables previously the clusterization. We also find out that the clusters are rather stable. You can see the size of the clusters for a sample with 50K users for 5 different trails of *kmeans()*
+
+```{r}
+size
+```
+
+We decided to go without scaling the variables because it may capture better the way this particular society groups.
+
+After clustering, we calculated the *mean*, *standard deviation* and *count* of reviews for each business. We also kept only business with 20 or more reviews for analysis and with at least rates for 2 clusters.
+```{r, eval=FALSE}
+# Calculate average, standard deviation and count
+resumo <- with(mtx_business,
+               aggregate(stars ~ business_id + group,
+                         FUN = function(x) c(MN = mean(x), SD = sd(x),
+                                             COUNT = length(x))))
+
+# Select only the business with 20 or more review for each group
+resumo <- resumo[resumo$stars[,3] >= 20, ]
+
+# Find business that have reviews for at least 2 groups
+resumo <- resumo[duplicated(resumo$business_id), ]
+
+# Calculate standard error
+resumo$SR <- resumo$stars[,2] / resumo$stars[,3]
+
+# Calculate T score for two sided test
+system.time({
+    resumo$TS <- sapply(resumo$stars[,3], 
+                              FUN = function(x) qt(1-alpha/2,df = x))
+})
+
+```
 
 # Discussion
-- Explain how you interpret the results of your analysis and what the implications are for your question/problem.
+We didn't hand analyse the users assigned to each group. This could possibly shows if the groups are meaningful in other ways to the YELP business.
+
+We will implement a code to automatically test if the rates for a business that have reviews in more than one group are statistically different.

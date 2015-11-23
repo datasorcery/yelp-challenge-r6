@@ -10,7 +10,7 @@ library(lubridate)
 # load(file="./rdata/tip.RData")
 load(file="./rdata/review.RData")
 load(file="./rdata/user.RData")
-#save(df_users, file = './rdata/df_users.RData')
+save(df_users, size, file = './rdata/analysis.RData')
 
 # SETUP
 set.seed(666)
