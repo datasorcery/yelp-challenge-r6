@@ -14,90 +14,91 @@ save(df_users, size, file = './rdata/analysis.RData')
 
 # SETUP
 set.seed(666)
-s_number <- 50000 # number of random samples
+s_number <- -1 # number of random samples. Use -1 for the full dataset
 clusters_no <- 15
 rescale <- FALSE
-alpha <- 0.05
+alpha <- 0.2
+min_review <- 30 # minimal number of reviews to consider in analysis per group
 
 # Do users analysis
 system.time({
-# Random sampling of users and business
-if (s_number > 0 ) {
-    df_users <- user[sample(1:nrow(user), s_number, replace=FALSE),] 
-} else df_users <- user
-
-# Transform nested data in columns
-df_users$votes.funny <- df_users$votes$funny
-df_users$votes.useful <- df_users$votes$useful
-df_users$votes.cool <- df_users$votes$cool
-df_users$compliments.profile <- df_users$compliments$profile
-df_users$compliments.cute <- df_users$compliments$cute
-df_users$compliments.funny <- df_users$compliments$funny
-df_users$compliments.plain <- df_users$compliments$plain
-df_users$compliments.writer <- df_users$compliments$writer
-df_users$compliments.note <- df_users$compliments$note
-df_users$compliments.photos <- df_users$compliments$photos
-df_users$compliments.hot <- df_users$compliments$hot
-df_users$compliments.cool <- df_users$compliments$cool
-df_users$compliments.more <- df_users$compliments$more
-df_users$compliments.list <- df_users$compliments$list
-df_users$reviews <- df_users$review_count
-
-# Count how many friends a user have
-df_users <- cbind(df_users, friends_no = sapply(df_users$friends, FUN = length))
-
-# Get how long a user is yelping
-# Convert time to real time
-df_users$yelping_since <- ymd(paste(df_users$yelping_since,'-01', sep=''))
-
-# To understand the logic look this stackoverflow:
-# http://stackoverflow.com/questions/1995933/number-of-months-between-two-dates/1996404#1996404
-# Function to get time difference in months
-y_months <- function(d) {
-    length(seq(from = d,to = now(), by='month')) - 1
-}
-# Calculate for each row
-df_users$yelping_months <- sapply(df_users$yelping_since, FUN = y_months)
-
-# Remove nested and unused data
-nested_cols <- c('votes','compliments','type','friends','name',
-                 'yelping_since','elite','review_count')
-df_users <- df_users[!(names(df_users) %in% nested_cols)]
-
-# Transform NAs in ZERO
-df_users[is.na(df_users)] <- 0
-
-# Rescale data?
-if (rescale) {
-    mtx_user <- scale(df_users[!(names(df_users) %in% c('user_id'))])
-} else mtx_user <- df_users[!(names(df_users) %in% c('user_id'))]
-
-# Cluster users
-cl_users <- kmeans(mtx_user, clusters_no,
-                   iter.max = 1000, nstart = 5)
-size <- cl_users$size   # Store clusters size for first run.
-cl_labels <- cl_users$cluster  # Store cluster membership info
-
-# Re-cluster for cluster stability analysis
-for (i in 1:4) {
+    # Random sampling of users and business
+    if (s_number > 0 ) {
+        df_users <- user[sample(1:nrow(user), s_number, replace=FALSE),] 
+    } else df_users <- user
+    
+    # Transform nested data in columns
+    df_users$votes.funny <- df_users$votes$funny
+    df_users$votes.useful <- df_users$votes$useful
+    df_users$votes.cool <- df_users$votes$cool
+    df_users$compliments.profile <- df_users$compliments$profile
+    df_users$compliments.cute <- df_users$compliments$cute
+    df_users$compliments.funny <- df_users$compliments$funny
+    df_users$compliments.plain <- df_users$compliments$plain
+    df_users$compliments.writer <- df_users$compliments$writer
+    df_users$compliments.note <- df_users$compliments$note
+    df_users$compliments.photos <- df_users$compliments$photos
+    df_users$compliments.hot <- df_users$compliments$hot
+    df_users$compliments.cool <- df_users$compliments$cool
+    df_users$compliments.more <- df_users$compliments$more
+    df_users$compliments.list <- df_users$compliments$list
+    df_users$reviews <- df_users$review_count
+    
+    # Count how many friends a user have
+    df_users <- cbind(df_users, friends_no = sapply(df_users$friends, FUN = length))
+    
+    # Get how long a user is yelping
+    # Convert time to real time
+    df_users$yelping_since <- ymd(paste(df_users$yelping_since,'-01', sep=''))
+    
+    # To understand the logic look this stackoverflow:
+    # http://stackoverflow.com/questions/1995933/number-of-months-between-two-dates/1996404#1996404
+    # Function to get time difference in months
+    y_months <- function(d) {
+        length(seq(from = d,to = now(), by='month')) - 1
+    }
+    # Calculate for each row
+    df_users$yelping_months <- sapply(df_users$yelping_since, FUN = y_months)
+    
+    # Remove nested and unused data
+    nested_cols <- c('votes','compliments','type','friends','name',
+                     'yelping_since','elite','review_count')
+    df_users <- df_users[!(names(df_users) %in% nested_cols)]
+    
+    # Transform NAs in ZERO
+    df_users[is.na(df_users)] <- 0
+    
+    # Rescale data?
+    if (rescale) {
+        mtx_user <- scale(df_users[!(names(df_users) %in% c('user_id'))])
+    } else mtx_user <- df_users[!(names(df_users) %in% c('user_id'))]
+    
+    # Cluster users
     cl_users <- kmeans(mtx_user, clusters_no,
                        iter.max = 1000, nstart = 5)
-    size <- cbind(size,cl_users$size)
-    cl_labels <- cbind(cl_labels,cl_users$cluster)
-}
-
-# Name columns to help analysis
-size <- data.frame(size)
-colnames(size) <- c('C1','C2','C3','C4','C5')
-colnames(cl_labels) <- c('C1','C2','C3','C4','C5')
-
-# Apply classification to the original DF
-df_users <- cbind(df_users, cl_labels)
-
-# Find places that some person in one group
-# Select users from one group
-df_users[df_users$C1 == 1, ]$user_id
-
+    size <- cl_users$size   # Store clusters size for first run.
+    cl_labels <- cl_users$cluster  # Store cluster membership info
+    
+    # Re-cluster for cluster stability analysis
+    for (i in 1:4) {
+        cl_users <- kmeans(mtx_user, clusters_no,
+                           iter.max = 1000, nstart = 5)
+        size <- cbind(size,cl_users$size)
+        cl_labels <- cbind(cl_labels,cl_users$cluster)
+    }
+    
+    # Name columns to help analysis
+    size <- data.frame(size)
+    colnames(size) <- c('C1','C2','C3','C4','C5')
+    colnames(cl_labels) <- c('C1','C2','C3','C4','C5')
+    
+    # Apply classification to the original DF
+    df_users <- cbind(df_users, cl_labels)
+    
+    # Find places that some person in one group
+    # Select users from one group
+    df_users[df_users$C1 == 1, ]$user_id
+    
 }) # End of users analysis
 
 # Start business analysis
@@ -125,29 +126,71 @@ resumo <- with(mtx_business,
                          FUN = function(x) c(MN = mean(x), SD = sd(x), COUNT = length(x))))
 })
 
-# Select only the business with 20 or more review for each group
-resumo <- resumo[resumo$stars[,3] >= 20, ]
+# Select only the business with min_review or more for each group
+resumo <- resumo[resumo$stars[,3] >= min_review, ]
 
-# Find business that have reviews for at least 2 groups
-resumo <- resumo[duplicated(resumo$business_id), ]
+# Sort business by business_id and group
+resumo <- resumo[order(resumo$business_id, resumo$group), ]
 
-# Calculate standard error
-resumo$SR <- resumo$stars[,2] / resumo$stars[,3]
+# Business that have at least two ocurrencies
+multiple <- unique(resumo[duplicated(resumo$business_id), ]$business_id)
+
+# Subset only business existing in *multiple* reviews
+resumo <- resumo[(resumo$business_id %in% multiple), ]
 
 # Calculate T score for two sided test
-system.time({
-    resumo$TS <- sapply(resumo$stars[,3], 
-                              FUN = function(x) qt(1-alpha/2,df = x))
-})
+resumo$TS <- sapply(resumo$stars[,3], 
+                    FUN = function(x) qt(1-alpha/2,df = x))
 
-# Test if diferent groups lead to diferent averages
-g <- c('zTCCbg7mGslxACL5KlAPIQ')
+# Get list of unique business
 g <- unique(resumo$business_id)
-hyp_tests <- 0
+hyp_tests <- data.frame(business_id = character(), 
+                        positive = integer(), 
+                        negative = integer(), 
+                        stringsAsFactors = F)
+hyp_tests <- list()
 
+c <- 0 # Counter
+# Test if diferent groups lead to diferent averages
+# Do hypotesis test for all business
 for (b in g) {
-    print(resumo[resumo$business_id == 'zTCCbg7mGslxACL5KlAPIQ',])
+    # Get the list of business with the same ID and reset counters
+    c <- c + 1
+    l <- resumo[resumo$business_id == b, ]
+
+    pos <- 0
+    neg <- 0
+
+    # Get the relevant mean and T statistic
+    mu <- l[1,]$stars[1,1]
+    TS <- l[1,]$TS
+    
+    # We start in the second business in the list
+    i <- 2
+    for (i in 2:length(l$business_id)) {
+        c <- c + 1
+        Z <- abs(l[i,]$stars[1] - mu) / (l[i,]$stars[2]/sqrt(l[i,]$stars[3]))
+        if (Z > TS) { pos <- pos + 1 } else { neg <- neg + 1 }
+    }
+    
+    # Assign to analysis DF
+    v <- data.frame(business_id = b, 
+                    positive = pos, 
+                    negative = neg,
+                    stringsAsFactors = F)
+    hyp_tests <- rbind(hyp_tests, v)
+    
+    # Cleanup
+    rm(l,pos,neg,mu,TS,i,Z,v)
 }
+rm(b,g)
+
+# Rename column names to simplify understanding... :-)
+colnames(hyp_tests) <- c('business_id', 'positive', 'negative')
+
+# Conclusions
+total_pos <- sum(hyp_tests$positive)
+total_neg <- sum(hyp_tests$negative)
 
 # cleanup USERS
 rm(df_users,nested_cols,s_number,y_months,cl_users,mtx_user,size,
