@@ -20,7 +20,7 @@ rescale <- FALSE
 alpha <- 0.2
 min_review <- 30 # minimal number of reviews to consider in analysis per group
 
-# Do users analysis
+# Do users analysis (6min for full dataset)
 system.time({
     # Random sampling of users and business
     if (s_number > 0 ) {
@@ -102,95 +102,100 @@ system.time({
 }) # End of users analysis
 
 # Start business analysis
-# Find the average rate by group, only need some fields
-mtx_business <- review[c('business_id','user_id','stars')]
-
-# if working with a user sample, select only the places for witch there is
-# users reviews
-mtx_business <- mtx_business[(mtx_business$user_id %in% unique(df_users$user_id)),]
-
-# Function to find the group from user_id
-user_group <- function(u) {
-    df_users[df_users$user_id == u, ]$C1
-}
-
-# Atribute review to correct group
 system.time({
-    mtx_business$group <- sapply(mtx_business$user_id, FUN = user_group)
-})
-
-# Calculate average, standard deviation and count
-system.time({
-resumo <- with(mtx_business,
-               aggregate(stars ~ business_id + group,
-                         FUN = function(x) c(MN = mean(x), SD = sd(x), COUNT = length(x))))
-})
-
-# Select only the business with min_review or more for each group
-resumo <- resumo[resumo$stars[,3] >= min_review, ]
-
-# Sort business by business_id and group
-resumo <- resumo[order(resumo$business_id, resumo$group), ]
-
-# Business that have at least two ocurrencies
-multiple <- unique(resumo[duplicated(resumo$business_id), ]$business_id)
-
-# Subset only business existing in *multiple* reviews
-resumo <- resumo[(resumo$business_id %in% multiple), ]
-
-# Calculate T score for two sided test
-resumo$TS <- sapply(resumo$stars[,3], 
-                    FUN = function(x) qt(1-alpha/2,df = x))
-
-# Get list of unique business
-g <- unique(resumo$business_id)
-hyp_tests <- data.frame(business_id = character(), 
-                        positive = integer(), 
-                        negative = integer(), 
-                        stringsAsFactors = F)
-hyp_tests <- list()
-
-c <- 0 # Counter
-# Test if diferent groups lead to diferent averages
-# Do hypotesis test for all business
-for (b in g) {
-    # Get the list of business with the same ID and reset counters
-    c <- c + 1
-    l <- resumo[resumo$business_id == b, ]
-
-    pos <- 0
-    neg <- 0
-
-    # Get the relevant mean and T statistic
-    mu <- l[1,]$stars[1,1]
-    TS <- l[1,]$TS
+    # To find the average rate by group, we only need some fields
+    mtx_business <- review[c('business_id','user_id','stars')]
     
-    # We start in the second business in the list
-    i <- 2
-    for (i in 2:length(l$business_id)) {
+    # Certify that the review are from our current users (beware users sampling)
+    mtx_business <- mtx_business[(mtx_business$user_id %in% unique(df_users$user_id)),]
+    
+#     # Function to find the group from user_id
+#     user_group <- function(u) {
+#         df_users[df_users$user_id == u, ]$C1
+#     }
+#     
+#     # Atribute review to correct group
+#     system.time({
+#         mtx_business$group <- sapply(mtx_business$user_id, FUN = user_group)
+#     })
+#     
+    # Atribute review to correct group
+    mtx_business <- merge(mtx_business, df_users[c('user_id','C1')], by='user_id')
+    colnames(mtx_business) <- c('user_id','business_id','stars','group')
+    mtx_business <- mtx_business[c('business_id','user_id','stars','group')]
+    
+    # Calculate average, standard deviation and count
+    resumo <- with(mtx_business,
+                   aggregate(stars ~ business_id + group,
+                             FUN = function(x) c(MN = mean(x), SD = sd(x), COUNT = length(x))))
+    
+    # Select only the business with min_review or more for each group
+    resumo <- resumo[resumo$stars[,3] >= min_review, ]
+    
+    # Sort business by business_id and group
+    resumo <- resumo[order(resumo$business_id, resumo$group), ]
+    
+    # Business that have at least two ocurrencies
+    multiple <- unique(resumo[duplicated(resumo$business_id), ]$business_id)
+    
+    # Subset only business existing in *multiple* reviews
+    resumo <- resumo[(resumo$business_id %in% multiple), ]
+    
+    # Calculate T score for two sided test
+    resumo$TS <- sapply(resumo$stars[,3], 
+                        FUN = function(x) qt(1-alpha/2,df = x))
+    
+    # Get list of unique business
+    g <- unique(resumo$business_id)
+#     hyp_tests <- data.frame(business_id = character(), 
+#                             positive = integer(), 
+#                             negative = integer(), 
+#                             stringsAsFactors = F)
+    hyp_tests <- list()
+    
+    c <- 0 # Counter
+    # Test if diferent groups lead to diferent averages
+    # Do hypotesis test for all business
+    for (b in g) {
+        # Get the list of business with the same ID and reset counters
         c <- c + 1
-        Z <- abs(l[i,]$stars[1] - mu) / (l[i,]$stars[2]/sqrt(l[i,]$stars[3]))
-        if (Z > TS) { pos <- pos + 1 } else { neg <- neg + 1 }
+        l <- resumo[resumo$business_id == b, ]
+        
+        pos <- 0
+        neg <- 0
+        
+        # Get the relevant mean and T statistic
+        mu <- l[1,]$stars[1,1]
+        TS <- l[1,]$TS
+        
+        # We start in the second business in the list
+        i <- 2
+        for (i in 2:length(l$business_id)) {
+            c <- c + 1
+            Z <- abs(l[i,]$stars[1] - mu) / (l[i,]$stars[2]/sqrt(l[i,]$stars[3]))
+            if (Z > TS) { pos <- pos + 1 } else { neg <- neg + 1 }
+        }
+        
+        # Assign to analysis DF
+        v <- data.frame(business_id = b, 
+                        positive = pos, 
+                        negative = neg,
+                        stringsAsFactors = F)
+        hyp_tests <- rbind(hyp_tests, v)
+        
+        # Cleanup
+        rm(l,pos,neg,mu,TS,i,Z,v)
     }
+    rm(b,g)
     
-    # Assign to analysis DF
-    v <- data.frame(business_id = b, 
-                    positive = pos, 
-                    negative = neg,
-                    stringsAsFactors = F)
-    hyp_tests <- rbind(hyp_tests, v)
+    # Rename column names to simplify understanding... :-)
+    colnames(hyp_tests) <- c('business_id', 'positive', 'negative')
     
-    # Cleanup
-    rm(l,pos,neg,mu,TS,i,Z,v)
-}
-rm(b,g)
-
-# Rename column names to simplify understanding... :-)
-colnames(hyp_tests) <- c('business_id', 'positive', 'negative')
-
-# Conclusions
-total_pos <- sum(hyp_tests$positive)
-total_neg <- sum(hyp_tests$negative)
+    # Conclusions
+    total_pos <- sum(hyp_tests$positive)
+    total_neg <- sum(hyp_tests$negative)
+    
+})
 
 # cleanup USERS
 rm(df_users,nested_cols,s_number,y_months,cl_users,mtx_user,size,

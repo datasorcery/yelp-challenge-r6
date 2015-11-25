@@ -30,3 +30,9 @@ Ou our final analysis our null hypotesis was that the average from two groups ar
 
 Conclusions
 ========================================================
+From our analysis we could draw the following conclusions:
+
+- It seems that a representative number of groups have averages that difer. A fairly large audience could be better served if a group average rate was used.
+- We didn't explore features like demographics, because it wasn't available in the dataset. It could be an even better predictor for group membership.
+- Also, we did not scale our variables to test the analysis. We saw that scaling give us groups with more homogeneus sizes, but we did not hypotesis test this grouping.
+- We could possible improve our study by computing the average mean that one user gives to restaurants, doctors and other classes of business. 
